@@ -1,5 +1,5 @@
-import type { Character, CharacterFormData, Skill } from '../types/character';
-import { Gender, SkillType } from '../types/character';
+import type { Character, CharacterFormData, Skill, Need } from '../types/character';
+import { Gender, SkillType, NeedType } from '../types/character';
 import { v4 as uuidv4 } from 'uuid';
 
 // 男性名字列表
@@ -95,6 +95,29 @@ const generateRandomSkills = (): Skill[] => {
   });
 };
 
+// 获取所有需求类型数组
+const getAllNeedTypes = (): NeedType[] => {
+  return Object.values(NeedType);
+};
+
+// 生成随机需求等级
+const getRandomNeedValue = (min: number = 70, max: number = 100): number => {
+  return getRandomInt(min, max);
+};
+
+// 生成随机需求列表
+const generateRandomNeeds = (): Need[] => {
+  const allNeedTypes = getAllNeedTypes();
+  
+  // 为每种需求生成随机值，初始值偏高（70-100）
+  return allNeedTypes.map(needType => {
+    return {
+      type: needType,
+      value: getRandomNeedValue()
+    };
+  });
+};
+
 // 生成随机角色数据
 export const generateRandomCharacter = (): CharacterFormData => {
   const gender = getRandomGender();
@@ -102,7 +125,8 @@ export const generateRandomCharacter = (): CharacterFormData => {
     name: getRandomNameByGender(gender),
     gender: gender,
     age: getRandomAge(),
-    skills: generateRandomSkills()
+    skills: generateRandomSkills(),
+    needs: generateRandomNeeds()
   };
 };
 
@@ -110,6 +134,7 @@ export const generateRandomCharacter = (): CharacterFormData => {
 export const createRandomCharacter = (): Character => {
   return {
     id: uuidv4(),
-    ...generateRandomCharacter()
+    ...generateRandomCharacter(),
+    lastUpdateTime: Date.now()
   };
 }; 

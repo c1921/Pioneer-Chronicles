@@ -20,10 +20,22 @@ export enum SkillType {
   Intellectual = 'Intellectual' // 智识
 }
 
+// 需求类型
+export enum NeedType {
+  Rest = 'Rest',       // 休息
+  Food = 'Food'        // 饮食
+}
+
 // 技能属性接口
 export interface Skill {
   type: SkillType;
   level: number; // 0-20
+}
+
+// 需求接口
+export interface Need {
+  type: NeedType;
+  value: number; // 0-100
 }
 
 // 角色接口
@@ -33,6 +45,8 @@ export interface Character {
   gender: Gender; // 角色性别
   age: number; // 角色年龄
   skills: Skill[]; // 角色技能列表
+  needs: Need[]; // 角色需求列表
+  lastUpdateTime?: number; // 上次更新需求的时间戳
 }
 
 // 创建新角色的表单类型
@@ -41,4 +55,5 @@ export interface CharacterFormData {
   gender: Gender;
   age: number;
   skills: Skill[];
+  needs?: Need[]; // 可选，创建时会自动初始化
 } 

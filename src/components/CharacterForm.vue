@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Character, CharacterFormData, Skill } from '../types/character';
-import { Gender, SkillType } from '../types/character';
+import type { Character, CharacterFormData, Skill, Need } from '../types/character';
+import { Gender, SkillType, NeedType } from '../types/character';
 import { v4 as uuidv4 } from 'uuid';
 import { generateRandomCharacter } from '../services/randomCharacterGenerator';
 
@@ -17,11 +17,20 @@ const initializeSkills = (): Skill[] => {
   }));
 };
 
+// 初始化所有需求为满值
+const initializeNeeds = (): Need[] => {
+  return Object.values(NeedType).map(type => ({
+    type,
+    value: 100
+  }));
+};
+
 const formData = ref<CharacterFormData>({
   name: '',
   gender: Gender.Male,
   age: 18,
-  skills: initializeSkills()
+  skills: initializeSkills(),
+  needs: initializeNeeds()
 });
 
 const errorMessage = ref<string>('');
@@ -72,7 +81,9 @@ const saveCharacter = () => {
   // 创建角色对象
   const character: Character = {
     id: uuidv4(),
-    ...formData.value
+    ...formData.value,
+    needs: formData.value.needs || initializeNeeds(),
+    lastUpdateTime: Date.now()
   };
   
   // 调用保存方法
@@ -83,7 +94,8 @@ const saveCharacter = () => {
     name: '',
     gender: Gender.Male,
     age: 18,
-    skills: initializeSkills()
+    skills: initializeSkills(),
+    needs: initializeNeeds()
   };
   
   errorMessage.value = '';

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import type { Character, Skill } from '../types/character';
-import { Gender, SkillType } from '../types/character';
+import { ref, onMounted, computed, watch } from 'vue';
+import type { Character, Skill, Need } from '../types/character';
+import { Gender, SkillType, NeedType } from '../types/character';
 import TimeController from './TimeController.vue';
+import timeManager from '../services/timeService';
+import NeedsManager from '../services/needsManager';
 
 // 定义事件
 const emit = defineEmits<{
@@ -27,9 +29,55 @@ const sortedSkills = computed(() => {
   return [...selectedCharacter.value.skills].sort((a, b) => b.level - a.level);
 });
 
+// 获取角色需求
+const getCharacterNeeds = computed(() => {
+  if (!selectedCharacter.value) return [];
+  return selectedCharacter.value.needs || [];
+});
+
+// 查找特定需求
+const findNeed = (character: Character, needType: NeedType): Need | undefined => {
+  return character.needs.find(n => n.type === needType);
+};
+
+// 获取需求值
+const getNeedValue = (character: Character, needType: NeedType): number => {
+  const need = findNeed(character, needType);
+  return need ? need.value : 0;
+};
+
+// 获取需求状态类名
+const getNeedStatusClass = (value: number): string => {
+  return NeedsManager.getNeedColorClass(value);
+};
+
+// 满足需求
+const satisfyNeed = (needType: NeedType) => {
+  if (!selectedCharacter.value) return;
+  
+  // 更新选中的角色
+  const updatedCharacter = NeedsManager.satisfyNeed(selectedCharacter.value, needType, 50);
+  
+  // 更新角色列表中的对应角色
+  characters.value = characters.value.map(char => 
+    char.id === updatedCharacter.id ? updatedCharacter : char
+  );
+  
+  // 保存到本地存储
+  saveToLocalStorage();
+};
+
 // 选择角色
 const selectCharacter = (characterId: string) => {
   selectedCharacterId.value = characterId;
+};
+
+// 更新所有角色的需求
+const updateAllCharactersNeeds = () => {
+  characters.value = NeedsManager.updateAllCharactersNeeds(characters.value);
+  
+  // 保存到本地存储
+  saveToLocalStorage();
 };
 
 // 重置游戏
@@ -59,6 +107,11 @@ const getSkillLevelColor = (level: number): string => {
   return 'bg-gray-300 text-gray-700';
 };
 
+// 保存到本地存储
+const saveToLocalStorage = () => {
+  localStorage.setItem('characters', JSON.stringify(characters.value));
+};
+
 // 从本地存储加载数据
 const loadFromLocalStorage = () => {
   const savedCharacters = localStorage.getItem('characters');
@@ -75,9 +128,21 @@ const loadFromLocalStorage = () => {
   }
 };
 
+// 监听时间变化
+watch(() => timeManager.getDateTime(), () => {
+  updateAllCharactersNeeds();
+});
+
 // 组件挂载时加载数据
 onMounted(() => {
   loadFromLocalStorage();
+  // 立即更新一次需求
+  updateAllCharactersNeeds();
+  
+  // 注册时间变化回调
+  timeManager.onTimeChange(() => {
+    updateAllCharactersNeeds();
+  });
 });
 </script>
 
@@ -121,6 +186,19 @@ onMounted(() => {
                   <span :class="getGenderColor(character.gender)">{{ character.gender }}</span>
                   <span>{{ character.age }} years old</span>
                 </div>
+                <!-- 简略需求指示器 -->
+                <div class="flex gap-1 mt-1">
+                  <div 
+                    class="h-2 w-8 rounded-sm" 
+                    :class="getNeedStatusClass(getNeedValue(character, NeedType.Rest))"
+                    title="Rest"
+                  ></div>
+                  <div 
+                    class="h-2 w-8 rounded-sm" 
+                    :class="getNeedStatusClass(getNeedValue(character, NeedType.Food))"
+                    title="Food"
+                  ></div>
+                </div>
               </div>
             </div>
           </div>
@@ -142,6 +220,39 @@ onMounted(() => {
                   <span>{{ selectedCharacter.age }} years old</span>
                 </div>
               </div>
+            </div>
+          </div>
+          
+          <!-- 需求部分 -->
+          <h4 class="text-lg font-bold mb-3">Needs</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div 
+              v-for="need in getCharacterNeeds" 
+              :key="need.type"
+              class="flex flex-col border rounded p-3"
+            >
+              <div class="flex justify-between items-center mb-2">
+                <span class="font-medium">{{ need.type }}</span>
+                <span 
+                  :class="getNeedStatusClass(need.value)" 
+                  class="px-2 py-0.5 rounded-full text-xs font-bold"
+                >
+                  {{ Math.round(need.value) }}%
+                </span>
+              </div>
+              <div class="w-full bg-gray-200 rounded h-2 mb-2">
+                <div 
+                  class="h-2 rounded"
+                  :class="getNeedStatusClass(need.value)"
+                  :style="`width: ${need.value}%`"
+                ></div>
+              </div>
+              <button 
+                class="btn btn-sm btn-outline-primary mt-1"
+                @click="satisfyNeed(need.type)"
+              >
+                Satisfy {{ need.type }}
+              </button>
             </div>
           </div>
           
