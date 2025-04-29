@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
 import type { Character, Skill, Need } from '../types/character';
-import { Gender, SkillType, NeedType } from '../types/character';
+import { Gender, SkillType, NeedType, WorkStatus } from '../types/character';
+import { WorkType } from '../types/work';
 import TimeController from './TimeController.vue';
 import timeManager from '../services/timeService';
 import NeedsManager from '../services/needsManager';
@@ -107,6 +108,58 @@ const getSkillLevelColor = (level: number): string => {
   return 'bg-gray-300 text-gray-700';
 };
 
+// 获取工作状态文本和颜色
+const getWorkStatusClass = (status: WorkStatus): string => {
+  switch (status) {
+    case WorkStatus.Idle:
+      return 'text-gray-600';
+    case WorkStatus.Working:
+      return 'text-green-600 font-bold';
+    default:
+      return 'text-gray-600';
+  }
+};
+
+// 分配工作任务给角色
+const assignWork = (workType: string) => {
+  if (!selectedCharacter.value) return;
+  
+  // 更新选中的角色工作状态
+  const updatedCharacter = { 
+    ...selectedCharacter.value,
+    workStatus: WorkStatus.Working,
+    currentWorkType: workType
+  };
+  
+  // 更新角色列表中的对应角色
+  characters.value = characters.value.map(char => 
+    char.id === updatedCharacter.id ? updatedCharacter : char
+  );
+  
+  // 保存到本地存储
+  saveToLocalStorage();
+};
+
+// 让角色停止工作
+const stopWorking = () => {
+  if (!selectedCharacter.value) return;
+  
+  // 更新选中的角色工作状态
+  const updatedCharacter = { 
+    ...selectedCharacter.value,
+    workStatus: WorkStatus.Idle,
+    currentWorkType: undefined
+  };
+  
+  // 更新角色列表中的对应角色
+  characters.value = characters.value.map(char => 
+    char.id === updatedCharacter.id ? updatedCharacter : char
+  );
+  
+  // 保存到本地存储
+  saveToLocalStorage();
+};
+
 // 保存到本地存储
 const saveToLocalStorage = () => {
   localStorage.setItem('characters', JSON.stringify(characters.value));
@@ -147,145 +200,147 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container mx-auto py-8">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold">Game World</h2>
-      <button class="btn btn-sm btn-outline-danger" @click="resetGame">
+  <div class="container mx-auto p-4">
+    <!-- Main Screen Header -->
+    <div class="flex justify-between items-center mb-4">
+      <TimeController class="ml-4" @time-passed="updateAllCharactersNeeds" />
+      <button @click="resetGame" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">
         Reset Game
       </button>
     </div>
-    
-    <!-- 时间控制器 -->
-    <div class="mb-6">
-      <TimeController />
-    </div>
-    
-    <div v-if="characters.length === 0" class="card p-4 text-center">
-      <p class="text-gray-500">No characters found. Reset the game to create characters.</p>
-    </div>
-    
-    <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <!-- 角色选择侧边栏 -->
-      <div class="card p-4">
-        <h3 class="text-xl font-bold mb-4">Your Characters</h3>
-        <div class="space-y-2">
-          <div 
-            v-for="character in characters" 
-            :key="character.id" 
-            class="p-3 rounded cursor-pointer"
-            :class="character.id === selectedCharacterId ? 'bg-blue-100' : 'bg-gray-50 hover:bg-gray-100'"
-            @click="selectCharacter(character.id)"
-          >
-            <div class="flex items-center space-x-3">
-              <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-lg">
-                {{ character.name.charAt(0) }}
-              </div>
-              <div>
-                <div class="font-bold">{{ character.name }}</div>
-                <div class="text-xs flex gap-2">
-                  <span :class="getGenderColor(character.gender)">{{ character.gender }}</span>
-                  <span>{{ character.age }} years old</span>
+
+    <!-- Main Screen Content -->
+    <div class="flex flex-wrap -mx-2">
+      <!-- Left Side: Character List -->
+      <div class="w-full md:w-1/3 px-2 mb-4">
+        <div class="bg-white rounded shadow p-4 h-full">
+          <h2 class="text-xl font-bold mb-3">Characters</h2>
+          <div v-if="characters.length === 0" class="text-gray-600">
+            No characters. Please go back and create characters.
+          </div>
+          <div v-else class="divide-y">
+            <div 
+              v-for="character in characters" 
+              :key="character.id"
+              @click="selectCharacter(character.id)"
+              :class="['p-2 cursor-pointer hover:bg-gray-100', 
+                      selectedCharacterId === character.id ? 'bg-blue-100' : '']"
+            >
+              <div class="flex justify-between items-center">
+                <div>
+                  <span :class="getGenderColor(character.gender)">{{ character.name }}</span>
+                  <span class="text-xs text-gray-500 ml-2">{{ character.age }} yrs</span>
                 </div>
-                <!-- 简略需求指示器 -->
-                <div class="flex gap-1 mt-1">
-                  <div 
-                    class="h-2 w-8 rounded-sm" 
-                    :class="getNeedStatusClass(getNeedValue(character, NeedType.Rest))"
-                    title="Rest"
-                  ></div>
-                  <div 
-                    class="h-2 w-8 rounded-sm" 
-                    :class="getNeedStatusClass(getNeedValue(character, NeedType.Food))"
-                    title="Food"
-                  ></div>
+                <div>
+                  <!-- Work Status Label -->
+                  <span :class="['text-xs py-1 px-2 rounded-full', getWorkStatusClass(character.workStatus)]">
+                    {{ character.workStatus === WorkStatus.Working ? 'Working' : 'Idle' }}
+                    <span v-if="character.currentWorkType">({{ character.currentWorkType }})</span>
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <!-- 角色详情区域 -->
-      <div class="md:col-span-2">
-        <div v-if="selectedCharacter" class="card p-4">
-          <div class="flex justify-between items-start mb-6">
-            <div class="flex items-center space-x-4">
-              <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center text-2xl">
-                {{ selectedCharacter.name.charAt(0) }}
-              </div>
-              <div>
-                <h3 class="text-2xl font-bold">{{ selectedCharacter.name }}</h3>
-                <div class="text-sm flex gap-3">
-                  <span :class="getGenderColor(selectedCharacter.gender)">{{ selectedCharacter.gender }}</span>
-                  <span>{{ selectedCharacter.age }} years old</span>
-                </div>
+
+      <!-- Right Side: Selected Character Details -->
+      <div class="w-full md:w-2/3 px-2">
+        <div v-if="selectedCharacter" class="bg-white rounded shadow p-4">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">{{ selectedCharacter.name }} Details</h2>
+            <div class="flex items-center">
+              <span :class="getGenderColor(selectedCharacter.gender)" class="mr-2">
+                {{ selectedCharacter.gender === 'Male' ? '♂' : selectedCharacter.gender === 'Female' ? '♀' : '⚧' }}
+              </span>
+              <span class="text-sm">{{ selectedCharacter.age }} years old</span>
+            </div>
+          </div>
+
+          <!-- Work Status -->
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold mb-2">Work Status</h3>
+            <div class="flex items-center mb-2">
+              <span :class="['px-3 py-1 rounded-full', getWorkStatusClass(selectedCharacter.workStatus)]">
+                {{ selectedCharacter.workStatus === WorkStatus.Working ? 'Working' : 'Idle' }}
+                <span v-if="selectedCharacter.currentWorkType">
+                  ({{ selectedCharacter.currentWorkType }})
+                </span>
+              </span>
+              
+              <button 
+                v-if="selectedCharacter.workStatus === WorkStatus.Working"
+                @click="stopWorking"
+                class="ml-4 bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded text-sm"
+              >
+                Stop Working
+              </button>
+            </div>
+            
+            <!-- Available Work Types -->
+            <div v-if="selectedCharacter.workStatus === WorkStatus.Idle" class="mt-3">
+              <p class="text-sm mb-2">Assign Work:</p>
+              <div class="flex flex-wrap gap-2">
+                <button 
+                  v-for="(workName, workKey) in WorkType" 
+                  :key="workKey"
+                  @click="assignWork(workName)"
+                  class="bg-blue-500 hover:bg-blue-700 text-white py-1 px-2 rounded text-xs"
+                >
+                  {{ workName }}
+                </button>
               </div>
             </div>
           </div>
-          
-          <!-- 需求部分 -->
-          <h4 class="text-lg font-bold mb-3">Needs</h4>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+
+          <!-- Needs -->
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold mb-2">Needs</h3>
             <div 
               v-for="need in getCharacterNeeds" 
               :key="need.type"
-              class="flex flex-col border rounded p-3"
+              class="mb-2"
             >
-              <div class="flex justify-between items-center mb-2">
-                <span class="font-medium">{{ need.type }}</span>
-                <span 
-                  :class="getNeedStatusClass(need.value)" 
-                  class="px-2 py-0.5 rounded-full text-xs font-bold"
+              <div class="flex justify-between items-center mb-1">
+                <span>{{ need.type }}</span>
+                <button 
+                  @click="satisfyNeed(need.type)"
+                  class="bg-green-500 hover:bg-green-700 text-white py-1 px-2 rounded text-xs"
                 >
-                  {{ Math.round(need.value) }}%
-                </span>
+                  Satisfy Need
+                </button>
               </div>
-              <div class="w-full bg-gray-200 rounded h-2 mb-2">
+              <div class="w-full bg-gray-200 rounded-full h-2.5">
                 <div 
-                  class="h-2 rounded"
-                  :class="getNeedStatusClass(need.value)"
-                  :style="`width: ${need.value}%`"
+                  :class="['h-2.5 rounded-full', getNeedStatusClass(need.value)]"
+                  :style="{ width: `${need.value}%` }"
                 ></div>
               </div>
-              <button 
-                class="btn btn-sm btn-outline-primary mt-1"
-                @click="satisfyNeed(need.type)"
-              >
-                Satisfy {{ need.type }}
-              </button>
             </div>
           </div>
-          
-          <h4 class="text-lg font-bold mb-3">Skills</h4>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div 
-              v-for="skill in sortedSkills" 
-              :key="skill.type"
-              class="flex flex-col border rounded p-3"
-            >
-              <div class="flex justify-between items-center mb-2">
-                <span class="font-medium">{{ skill.type }}</span>
-                <span 
-                  :class="getSkillLevelColor(skill.level)" 
-                  class="px-2 py-0.5 rounded-full text-xs font-bold"
-                >
-                  {{ skill.level }}
-                </span>
-              </div>
-              <div class="w-full bg-gray-200 rounded h-2">
-                <div 
-                  class="h-2 rounded"
-                  :class="getSkillLevelColor(skill.level)"
-                  :style="`width: ${(skill.level / 20) * 100}%`"
-                ></div>
+
+          <!-- Skills -->
+          <div>
+            <h3 class="text-lg font-semibold mb-2">Skills</h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+              <div 
+                v-for="skill in sortedSkills" 
+                :key="skill.type"
+                class="border rounded p-2"
+              >
+                <div class="flex justify-between items-center">
+                  <span>{{ skill.type }}</span>
+                  <span :class="['px-2 py-0.5 rounded-full text-xs', getSkillLevelColor(skill.level)]">
+                    {{ skill.level }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
         
-        <div v-else class="card p-4 text-center">
-          <p class="text-gray-500">Select a character to view details.</p>
+        <div v-else class="bg-white rounded shadow p-4 flex items-center justify-center h-64">
+          <p class="text-gray-500">Please select a character from the left</p>
         </div>
       </div>
     </div>

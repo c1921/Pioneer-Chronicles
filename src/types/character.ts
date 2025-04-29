@@ -26,6 +26,12 @@ export enum NeedType {
   Food = 'Food'        // 饮食
 }
 
+// 工作状态枚举
+export enum WorkStatus {
+  Idle = 'Idle',      // 空闲状态
+  Working = 'Working'   // 正在工作
+}
+
 // 技能属性接口
 export interface Skill {
   type: SkillType;
@@ -47,6 +53,8 @@ export interface Character {
   skills: Skill[]; // 角色技能列表
   needs: Need[]; // 角色需求列表
   lastUpdateTime?: number; // 上次更新需求的时间戳
+  workStatus: WorkStatus; // 工作状态
+  currentWorkType?: string; // 当前正在进行的工作类型，空闲时为undefined
 }
 
 // 创建新角色的表单类型
@@ -56,4 +64,5 @@ export interface CharacterFormData {
   age: number;
   skills: Skill[];
   needs?: Need[]; // 可选，创建时会自动初始化
+  workStatus?: WorkStatus; // 可选，创建时默认为空闲
 } 

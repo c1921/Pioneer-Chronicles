@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { Character, CharacterFormData, Skill, Need } from '../types/character';
-import { Gender, SkillType, NeedType } from '../types/character';
+import { Gender, SkillType, NeedType, WorkStatus } from '../types/character';
 import { v4 as uuidv4 } from 'uuid';
 import { generateRandomCharacter } from '../services/randomCharacterGenerator';
 
@@ -30,7 +30,8 @@ const formData = ref<CharacterFormData>({
   gender: Gender.Male,
   age: 18,
   skills: initializeSkills(),
-  needs: initializeNeeds()
+  needs: initializeNeeds(),
+  workStatus: WorkStatus.Idle
 });
 
 const errorMessage = ref<string>('');
@@ -95,7 +96,8 @@ const saveCharacter = () => {
     gender: Gender.Male,
     age: 18,
     skills: initializeSkills(),
-    needs: initializeNeeds()
+    needs: initializeNeeds(),
+    workStatus: WorkStatus.Idle
   };
   
   errorMessage.value = '';

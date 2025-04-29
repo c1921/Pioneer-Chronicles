@@ -1,5 +1,5 @@
 import type { Character, CharacterFormData, Skill, Need } from '../types/character';
-import { Gender, SkillType, NeedType } from '../types/character';
+import { Gender, SkillType, NeedType, WorkStatus } from '../types/character';
 import { v4 as uuidv4 } from 'uuid';
 
 // 男性名字列表
@@ -126,15 +126,22 @@ export const generateRandomCharacter = (): CharacterFormData => {
     gender: gender,
     age: getRandomAge(),
     skills: generateRandomSkills(),
-    needs: generateRandomNeeds()
+    needs: generateRandomNeeds(),
+    workStatus: WorkStatus.Idle // 默认为空闲状态
   };
 };
 
-// 创建完整的随机角色（包含ID）
+// 创建具有ID的随机角色
 export const createRandomCharacter = (): Character => {
+  const formData = generateRandomCharacter();
   return {
     id: uuidv4(),
-    ...generateRandomCharacter(),
+    name: formData.name,
+    gender: formData.gender,
+    age: formData.age,
+    skills: formData.skills,
+    needs: formData.needs || [],
+    workStatus: formData.workStatus || WorkStatus.Idle,
     lastUpdateTime: Date.now()
   };
 }; 
