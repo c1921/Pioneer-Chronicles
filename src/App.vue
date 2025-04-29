@@ -22,9 +22,14 @@ const enterMainScreen = () => {
 
 // 重置游戏
 const resetGame = () => {
+  console.log('App: Resetting game...');
+  // 清除本地存储
   localStorage.removeItem('hasEnteredGame');
   localStorage.removeItem('characters');
-  location.reload();
+  // 回到角色创建界面
+  currentView.value = 'characters';
+  // 可选：刷新页面
+  // location.reload();
 };
 
 onMounted(() => {

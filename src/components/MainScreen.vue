@@ -84,6 +84,13 @@ const updateAllCharactersNeeds = () => {
 // 重置游戏
 const resetGame = () => {
   if (confirm('Are you sure you want to reset the game? All characters will be lost.')) {
+    console.log('Resetting game...');
+    // 清空本地数据
+    localStorage.removeItem('characters');
+    // 清空当前角色数据
+    characters.value = [];
+    selectedCharacterId.value = null;
+    // 触发重置事件，通知父组件
     emit('reset-game');
   }
 };
@@ -197,6 +204,115 @@ onMounted(() => {
     updateAllCharactersNeeds();
   });
 });
+
+// 命令输入框
+const commandInput = ref('');
+const commandError = ref('');
+const commandSuccess = ref('');
+
+// 处理命令
+const handleCommand = () => {
+  const command = commandInput.value.trim();
+  if (!command) return;
+  
+  // 重置消息
+  commandError.value = '';
+  commandSuccess.value = '';
+  
+  // 分析命令
+  if (command.startsWith('work')) {
+    // 工作命令格式: work 工作类型
+    const parts = command.split(' ');
+    if (parts.length < 2) {
+      commandError.value = 'Invalid command format. Use: work [work type]';
+      return;
+    }
+    
+    const workType = parts[1];
+    // 检查工作类型是否有效
+    const validWorkTypes = Object.values(WorkType);
+    const foundWorkType = validWorkTypes.find(type => type.toLowerCase() === workType.toLowerCase());
+    
+    if (!foundWorkType) {
+      commandError.value = `Invalid work type: ${workType}. Available types: ${validWorkTypes.join(', ')}`;
+      return;
+    }
+    
+    // 查找空闲角色
+    const idleCharacters = characters.value.filter(char => char.workStatus === WorkStatus.Idle);
+    if (idleCharacters.length === 0) {
+      commandError.value = 'No idle characters available for work assignment.';
+      return;
+    }
+    
+    // 分配工作给第一个空闲角色
+    const targetCharacter = idleCharacters[0];
+    
+    // 更新角色工作状态
+    const updatedCharacter = { 
+      ...targetCharacter,
+      workStatus: WorkStatus.Working,
+      currentWorkType: foundWorkType
+    };
+    
+    // 更新角色列表
+    characters.value = characters.value.map(char => 
+      char.id === updatedCharacter.id ? updatedCharacter : char
+    );
+    
+    // 保存到本地存储
+    saveToLocalStorage();
+    
+    // 显示成功消息
+    commandSuccess.value = `Assigned ${foundWorkType} to ${targetCharacter.name}`;
+    
+    // 选中该角色
+    selectCharacter(targetCharacter.id);
+  } else {
+    commandError.value = 'Unknown command. Available commands: work [work type]';
+  }
+  
+  // 清空命令输入
+  commandInput.value = '';
+};
+
+// 自动分配工作
+const autoAssignWork = (workType: string) => {
+  // 查找空闲角色
+  const idleCharacters = characters.value.filter(char => char.workStatus === WorkStatus.Idle);
+  if (idleCharacters.length === 0) {
+    commandError.value = 'No idle characters available for work assignment.';
+    // 3秒后清除错误消息
+    setTimeout(() => { commandError.value = ''; }, 3000);
+    return;
+  }
+  
+  // 分配工作给第一个空闲角色
+  const targetCharacter = idleCharacters[0];
+  
+  // 更新角色工作状态
+  const updatedCharacter = { 
+    ...targetCharacter,
+    workStatus: WorkStatus.Working,
+    currentWorkType: workType
+  };
+  
+  // 更新角色列表
+  characters.value = characters.value.map(char => 
+    char.id === updatedCharacter.id ? updatedCharacter : char
+  );
+  
+  // 保存到本地存储
+  saveToLocalStorage();
+  
+  // 显示成功消息
+  commandSuccess.value = `Assigned ${workType} to ${targetCharacter.name}`;
+  // 3秒后清除成功消息
+  setTimeout(() => { commandSuccess.value = ''; }, 3000);
+  
+  // 选中该角色
+  selectCharacter(targetCharacter.id);
+};
 </script>
 
 <template>
@@ -207,6 +323,24 @@ onMounted(() => {
       <button @click="resetGame" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">
         Reset Game
       </button>
+    </div>
+
+    <!-- Auto Work Assignment Section -->
+    <div class="mb-4 bg-white rounded shadow p-4">
+      <h3 class="text-lg font-semibold mb-2">Auto Assign Work</h3>
+      <div v-if="commandSuccess" class="text-green-500 text-sm mb-2">{{ commandSuccess }}</div>
+      <div v-if="commandError" class="text-red-500 text-sm mb-2">{{ commandError }}</div>
+      
+      <div class="flex flex-wrap gap-2">
+        <button 
+          v-for="(workName, workKey) in WorkType" 
+          :key="workKey"
+          @click="autoAssignWork(workName)"
+          class="bg-blue-500 hover:bg-blue-700 text-white py-1 px-3 rounded text-sm"
+        >
+          {{ workName }}
+        </button>
+      </div>
     </div>
 
     <!-- Main Screen Content -->
