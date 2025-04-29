@@ -6,10 +6,13 @@ import { WorkType } from '../types/work';
 import TimeController from './TimeController.vue';
 import timeManager from '../services/timeService';
 import NeedsManager from '../services/needsManager';
+import ItemGenerator from '../services/itemGenerator';
+import InventoryManager from '../services/inventoryManager';
 
 // 定义事件
 const emit = defineEmits<{
   (e: 'reset-game'): void
+  (e: 'enter-inventory'): void
 }>();
 
 // 角色列表
@@ -313,6 +316,51 @@ const autoAssignWork = (workType: string) => {
   // 选中该角色
   selectCharacter(targetCharacter.id);
 };
+
+// 生成随机物品并添加到库存
+const generateRandomItems = (count: number = 5) => {
+  // 初始化库存管理器
+  InventoryManager.init();
+  
+  // 生成随机物品
+  for (let i = 0; i < count; i++) {
+    const item = ItemGenerator.generateRandomItem();
+    InventoryManager.addItem(item);
+  }
+  
+  // 显示成功消息
+  commandSuccess.value = `Generated ${count} random items`;
+  // 3秒后清除消息
+  setTimeout(() => { commandSuccess.value = ''; }, 3000);
+};
+
+// 添加一个预设物品到库存
+const addCommonItem = (itemName: string) => {
+  const itemCreator = (ItemGenerator.CommonItems as any)[itemName];
+  
+  if (!itemCreator) {
+    commandError.value = `Unknown item: ${itemName}`;
+    setTimeout(() => { commandError.value = ''; }, 3000);
+    return;
+  }
+  
+  // 初始化库存管理器
+  InventoryManager.init();
+  
+  // 创建并添加物品
+  const item = itemCreator();
+  InventoryManager.addItem(item);
+  
+  // 显示成功消息
+  commandSuccess.value = `Added ${item.name} to inventory`;
+  // 3秒后清除消息
+  setTimeout(() => { commandSuccess.value = ''; }, 3000);
+};
+
+// 打开库存视图
+const openInventory = () => {
+  emit('enter-inventory');
+};
 </script>
 
 <template>
@@ -340,6 +388,41 @@ const autoAssignWork = (workType: string) => {
         >
           {{ workName }}
         </button>
+      </div>
+    </div>
+    
+    <!-- Items Section -->
+    <div class="mb-4 bg-white rounded shadow p-4">
+      <h3 class="text-lg font-semibold mb-2">Items</h3>
+      
+      <div class="flex space-x-2 mb-3">
+        <button 
+          @click="openInventory"
+          class="bg-purple-500 hover:bg-purple-700 text-white py-1 px-3 rounded text-sm"
+        >
+          Open Inventory
+        </button>
+        
+        <button 
+          @click="generateRandomItems(5)"
+          class="bg-green-500 hover:bg-green-700 text-white py-1 px-3 rounded text-sm"
+        >
+          Generate 5 Random Items
+        </button>
+      </div>
+      
+      <div>
+        <p class="text-sm mb-2">Add Common Items:</p>
+        <div class="flex flex-wrap gap-2">
+          <button 
+            v-for="itemName in ['Stone', 'Wood', 'Apple', 'Meat', 'Bandage', 'Pistol', 'Hammer']" 
+            :key="itemName"
+            @click="addCommonItem(itemName)"
+            class="bg-blue-500 hover:bg-blue-700 text-white py-1 px-2 rounded text-xs"
+          >
+            {{ itemName }}
+          </button>
+        </div>
       </div>
     </div>
 
