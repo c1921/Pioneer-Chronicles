@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import type { Character, Skill } from '../types/character';
 import { Gender, SkillType } from '../types/character';
+import TimeController from './TimeController.vue';
 
 // 定义事件
 const emit = defineEmits<{
@@ -87,6 +88,11 @@ onMounted(() => {
       <button class="btn btn-sm btn-outline-danger" @click="resetGame">
         Reset Game
       </button>
+    </div>
+    
+    <!-- 时间控制器 -->
+    <div class="mb-6">
+      <TimeController />
     </div>
     
     <div v-if="characters.length === 0" class="card p-4 text-center">
