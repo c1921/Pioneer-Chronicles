@@ -1,5 +1,5 @@
-import type { Character, CharacterFormData } from '../types/character';
-import { Gender } from '../types/character';
+import type { Character, CharacterFormData, Skill } from '../types/character';
+import { Gender, SkillType } from '../types/character';
 import { v4 as uuidv4 } from 'uuid';
 
 // 男性名字列表
@@ -59,13 +59,50 @@ const getRandomAge = (min: number = 18, max: number = 80): number => {
   return getRandomInt(min, max);
 };
 
+// 获取所有技能类型数组
+const getAllSkillTypes = (): SkillType[] => {
+  return Object.values(SkillType);
+};
+
+// 生成随机技能等级
+const getRandomSkillLevel = (min: number = 0, max: number = 20): number => {
+  return getRandomInt(min, max);
+};
+
+// 生成随机技能列表
+const generateRandomSkills = (): Skill[] => {
+  const allSkillTypes = getAllSkillTypes();
+  
+  // 为每种技能生成随机等级
+  return allSkillTypes.map(skillType => {
+    // 大多数技能保持较低等级 (0-5)
+    let maxLevel = 5;
+    
+    // 随机选择1-3个技能作为擅长技能 (5-15)
+    if (Math.random() < 0.2) {
+      maxLevel = 15;
+    }
+    
+    // 极少数技能达到专精水平 (15-20)
+    if (Math.random() < 0.05) {
+      maxLevel = 20;
+    }
+    
+    return {
+      type: skillType,
+      level: getRandomSkillLevel(0, maxLevel)
+    };
+  });
+};
+
 // 生成随机角色数据
 export const generateRandomCharacter = (): CharacterFormData => {
   const gender = getRandomGender();
   return {
     name: getRandomNameByGender(gender),
     gender: gender,
-    age: getRandomAge()
+    age: getRandomAge(),
+    skills: generateRandomSkills()
   };
 };
 

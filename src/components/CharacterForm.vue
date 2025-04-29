@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Character, CharacterFormData } from '../types/character';
-import { Gender } from '../types/character';
+import type { Character, CharacterFormData, Skill } from '../types/character';
+import { Gender, SkillType } from '../types/character';
 import { v4 as uuidv4 } from 'uuid';
 import { generateRandomCharacter } from '../services/randomCharacterGenerator';
 
@@ -9,13 +9,41 @@ const props = defineProps<{
   onSave: (character: Character) => void
 }>();
 
+// 初始化所有技能为0级
+const initializeSkills = (): Skill[] => {
+  return Object.values(SkillType).map(type => ({
+    type,
+    level: 0
+  }));
+};
+
 const formData = ref<CharacterFormData>({
   name: '',
   gender: Gender.Male,
-  age: 18
+  age: 18,
+  skills: initializeSkills()
 });
 
 const errorMessage = ref<string>('');
+
+// 查找技能
+const findSkill = (skillType: SkillType): Skill | undefined => {
+  return formData.value.skills.find(s => s.type === skillType);
+};
+
+// 获取技能等级
+const getSkillLevel = (skillType: SkillType): number => {
+  const skill = findSkill(skillType);
+  return skill ? skill.level : 0;
+};
+
+// 设置技能等级
+const setSkillLevel = (skillType: SkillType, level: number) => {
+  const skill = findSkill(skillType);
+  if (skill) {
+    skill.level = Math.max(0, Math.min(20, level));
+  }
+};
 
 // 生成随机角色
 const generateRandom = () => {
@@ -54,7 +82,8 @@ const saveCharacter = () => {
   formData.value = {
     name: '',
     gender: Gender.Male,
-    age: 18
+    age: 18,
+    skills: initializeSkills()
   };
   
   errorMessage.value = '';
@@ -123,6 +152,32 @@ const saveCharacter = () => {
         min="1"
         max="150"
       />
+    </div>
+    
+    <div class="mb-4">
+      <label class="form-label">Skills (0-20)</label>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div 
+          v-for="skillType in Object.values(SkillType)" 
+          :key="skillType"
+          class="flex flex-col"
+        >
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-sm">{{ skillType }}</label>
+            <span class="text-xs bg-gray-200 rounded px-2 py-0.5">
+              {{ getSkillLevel(skillType) }}
+            </span>
+          </div>
+          <input 
+            type="range" 
+            :min="0" 
+            :max="20" 
+            :value="getSkillLevel(skillType)"
+            @input="e => setSkillLevel(skillType, parseInt((e.target as HTMLInputElement).value))"
+            class="form-range"
+          />
+        </div>
+      </div>
     </div>
     
     <div class="flex justify-between">
